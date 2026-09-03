@@ -1,0 +1,63 @@
+services:
+  opencode:
+    image: ghcr.io/besi97/opencode-web:latest
+    restart: unless-stopped
+    command: web --port 4096 --hostname 0.0.0.0
+    environment:
+      # Docker CLI inside the container talks to this daemon (see dind service below)
+      - DOCKER_HOST=${DOCKER_HOST:-tcp://docker-in-docker:2375}
+      # Git auth: entrypoint configures `gh` and the Forgejo credential helper automatically when set
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - FORGEJO_TOKEN=${FORGEJO_TOKEN:-}
+      - FORGEJO_URL=${FORGEJO_URL:-}
+      - FORGEJO_USER=${FORGEJO_USER:-}
+      # Optional git commit identity
+      - GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-}
+      - GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-}
+      - GIT_COMMITTER_NAME=${GIT_COMMITTER_NAME:-}
+      - GIT_COMMITTER_EMAIL=${GIT_COMMITTER_EMAIL:-}
+      # Optional: enables the Google Stitch remote MCP server (see opencode.jsonc)
+      - STITCH_API_KEY=${STITCH_API_KEY:-}
+    ports:
+      # The web UI has NO authentication. Keep the localhost bind unless you
+      # front it with an authenticating reverse proxy.
+      - "${OPENCODE_BIND:-127.0.0.1}:${OPENCODE_PORT:-4096}:4096"
+    volumes:
+      # State lives in named volumes by default. Point any of these at a host
+      # directory (e.g. ./projects) to bind-mount instead - remember to chown 1000:1000.
+      - ${OPENCODE_PROJECTS_VOLUME:-opencode-projects}:/home/node/projects
+      - ${OPENCODE_CONFIG_VOLUME:-opencode-config}:/home/node/.config/opencode
+      - ${OPENCODE_SHARE_VOLUME:-opencode-share}:/home/node/.local/share/opencode
+      - ${OPENCODE_CACHE_VOLUME:-opencode-cache}:/home/node/.cache/opencode
+      # Read-only configuration from this repo
+      - ./opencode.jsonc:/home/node/.config/opencode/opencode.jsonc:ro
+      - ./instructions:/home/node/.config/opencode/instructions:ro
+      - ./agents:/home/node/.config/opencode/agents:ro
+      - ./skills:/home/node/.config/opencode/skills:ro
+    networks:
+      - default
+      - dind
+
+  # Optional Docker-in-Docker sidecar (docker:dind daemon, no TLS on 2375).
+  # Enable with: docker compose --profile dind up -d
+  docker-in-docker:
+    image: docker:dind
+    profiles: ["dind"]
+    restart: unless-stopped
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=
+    networks:
+      - dind
+    volumes:
+      - dind-storage:/var/lib/docker
+
+volumes:
+  opencode-projects:
+  opencode-config:
+  opencode-share:
+  opencode-cache:
+  dind-storage:
+
+networks:
+  dind:
