@@ -68,11 +68,11 @@ Published to `ghcr.io/besi97/opencode-web` (public, no login needed). **Tags mir
 
 | Tag | Meaning |
 |-----|---------|
-| `1.18.27` | Built with OpenCode 1.18.27 (published automatically when the pin lands on `main`) |
+| `1.18.27` | Built with OpenCode 1.18.27 (published automatically when the pin lands on `main`; **never moves after publication**) |
 | `v1.18.27` | Same, with `v` prefix |
 | `latest` | Tip of `main` |
 | `sha-<full-commit>` | Immutable per-commit build |
-| `1.18.27-1` | Toolchain rebuild of the same OpenCode version (push a `v1.18.27-1` git tag) |
+| `1.18.27-rev1` | Rebuild of the same OpenCode version (new toolchain, same pin). CI creates `v1.18.27-rev1` git tags and matching image tags automatically when a `main` merge doesn't change the pin; you can also push such a tag manually |
 
 Multi-arch: `linux/amd64`, `linux/arm64` (arm64 is best-effort via emulation).
 
@@ -88,7 +88,7 @@ cat /etc/opencode-web-versions                                  # inside the con
 
 Keeping things current:
 
-- **OpenCode** — update PRs bump the pinned ARG; merging to `main` publishes the new `:<version>` tag automatically (the workflow creates the matching git release tag).
+- **OpenCode** — update PRs bump the pinned ARG; merging to `main` publishes a new `:<version>` tag automatically (the workflow creates the matching git release tag). Merges that *don't* change the pin (e.g. base image updates) publish `:<version>-rev<N>` instead, so every version tag keeps describing exactly one image.
 - **Base image (`node:trixie-slim`) and CI actions** — Dependabot.
 - **Other brew tools** (`gh`, `kubectl`, `sops`, ...) — resolved by Homebrew at build time; `latest` tracks them, version tags do not promise anything about them.
 

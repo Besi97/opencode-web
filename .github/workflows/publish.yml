@@ -1,10 +1,14 @@
 name: Publish image
 
-# Image tags mirror the pinned OpenCode version (ARG OPENCODE_VERSION in the Dockerfile):
-#   push to main     -> :latest, :sha-<full>, :X.Y.Z (+ auto-creates the vX.Y.Z git tag
-#                       for provenance; note that tags pushed with GITHUB_TOKEN do not
-#                       re-trigger this workflow, so the main build publishes :X.Y.Z itself)
-#   tag vX.Y.Z(-r)   -> :X.Y.Z, :vX.Y.Z (manual release/rebuild-revision tags)
+# Image tags mirror the pinned OpenCode version (ARG OPENCODE_VERSION in the Dockerfile).
+# Version tags are immutable once published; rebuilds of the same pin get auto-revisions:
+#   push to main     -> :latest, :sha-<full>, plus the release tag computed as:
+#                         v$VER missing        -> push v$VER,        publish :$VER
+#                         v$VER at HEAD        -> no new tag,         republish :$VER (re-run)
+#                         v$VER at other commit-> push v$VER-rev<N+1>, publish :$VER-rev<N+1>
+#                       (tags pushed by this workflow do not re-trigger it, hence the
+#                        main build publishes the image tag itself)
+#   tag vX.Y.Z(-revN) -> :X.Y.Z(-revN), :vX.Y.Z(-revN) (manual release/rebuild tags)
 
 on:
   push:
@@ -24,26 +28,37 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Resolve pinned opencode version
+      - name: Resolve release tag
         if: github.ref == 'refs/heads/main'
-        id: ver
+        id: tag
         run: |
-          echo "image=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-          echo "version=$(grep -m1 '^ARG OPENCODE_VERSION=' Dockerfile | cut -d= -f2 | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
-
-      - name: Create release tag for new pinned version
-        if: steps.ver.outputs.version != ''
-        run: |
-          VER='${{ steps.ver.outputs.version }}'
-          if git ls-remote --tags "origin" "refs/tags/v$VER" | grep -q .; then
-            echo "v$VER already exists, skipping"
+          set -eu
+          IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          VER=$(grep -m1 '^ARG OPENCODE_VERSION=' Dockerfile | cut -d= -f2 | tr -d '[:space:]')
+          HEAD_SHA=$(git rev-parse HEAD)
+          TAGGED_SHA=$(git ls-remote origin "refs/tags/v$VER^{}" | cut -f1)
+          if [ -z "$TAGGED_SHA" ]; then
+            TAGGED_SHA=$(git ls-remote origin "refs/tags/v$VER" | cut -f1)
+          fi
+          if [ -z "$TAGGED_SHA" ]; then
+            NEW_TAG="v$VER"; IMAGE_TAG="$VER"
+          elif [ "$TAGGED_SHA" = "$HEAD_SHA" ]; then
+            NEW_TAG=""; IMAGE_TAG="$VER"
           else
+            N=$(git ls-remote origin "refs/tags/v$VER-rev*" | sed -nE "s|.*refs/tags/v$VER-rev([0-9]+)$|\1|p" | sort -n | tail -1)
+            NEW_TAG="v$VER-rev$(( ${N:-0} + 1 ))"; IMAGE_TAG="$VER-rev$(( ${N:-0} + 1 ))"
+          fi
+          if [ -n "$NEW_TAG" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "v$VER" -m "opencode $VER"
-            git push origin "v$VER"
-            echo "pushed v$VER"
+            git tag -a "$NEW_TAG" -m "opencode $VER"
+            git push origin "$NEW_TAG"
+            echo "pushed $NEW_TAG"
+          else
+            echo "v$VER already points at HEAD, no new tag"
           fi
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "imagetag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-qemu-action@v4
 
@@ -72,8 +87,8 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}
-            ${{ steps.ver.outputs.version && format('{0}:{1}', steps.ver.outputs.image, steps.ver.outputs.version) || '' }}
-            ${{ steps.ver.outputs.version && format('{0}:v{1}', steps.ver.outputs.image, steps.ver.outputs.version) || '' }}
+            ${{ steps.tag.outputs.imagetag && format('{0}:{1}', steps.tag.outputs.image, steps.tag.outputs.imagetag) || '' }}
+            ${{ steps.tag.outputs.imagetag && format('{0}:v{1}', steps.tag.outputs.image, steps.tag.outputs.imagetag) || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
