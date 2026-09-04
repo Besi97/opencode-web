@@ -70,8 +70,8 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}
-            ${{ steps.ver.outputs.version && format('{0}:{1}', env.IMAGE, steps.ver.outputs.version) || '' }}
-            ${{ steps.ver.outputs.version && format('{0}:v{1}', env.IMAGE, steps.ver.outputs.version) || '' }}
+            ${{ steps.ver.outputs.version && format('{0}:{1}', lower(env.IMAGE), steps.ver.outputs.version) || '' }}
+            ${{ steps.ver.outputs.version && format('{0}:v{1}', lower(env.IMAGE), steps.ver.outputs.version) || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
