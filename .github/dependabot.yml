@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Base image (node:trixie-slim) in the Dockerfile
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # actions/* pins in .github/workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
