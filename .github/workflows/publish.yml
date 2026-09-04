@@ -1,9 +1,10 @@
 name: Publish image
 
 # Image tags mirror the pinned OpenCode version (ARG OPENCODE_VERSION in the Dockerfile):
-#   push to main  -> :latest, :sha-<full>; auto-tags vX.Y.Z when the pin changed,
-#                    which triggers this workflow again for the tag -> :X.Y.Z
-#   tag vX.Y.Z(-r) -> :X.Y.Z, :vX.Y.Z (release tags, incl. manual rebuild revisions)
+#   push to main     -> :latest, :sha-<full>, :X.Y.Z (+ auto-creates the vX.Y.Z git tag
+#                       for provenance; note that tags pushed with GITHUB_TOKEN do not
+#                       re-trigger this workflow, so the main build publishes :X.Y.Z itself)
+#   tag vX.Y.Z(-r)   -> :X.Y.Z, :vX.Y.Z (manual release/rebuild-revision tags)
 
 on:
   push:
@@ -24,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Resolve pinned opencode version
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main'
         id: ver
         run: echo "version=$(grep -m1 '^ARG OPENCODE_VERSION=' Dockerfile | cut -d= -f2 | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
 
@@ -67,7 +68,10 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: |
+            ${{ steps.meta.outputs.tags }}
+            ${{ steps.ver.outputs.version && format('{0}:{1}', env.IMAGE, steps.ver.outputs.version) || '' }}
+            ${{ steps.ver.outputs.version && format('{0}:v{1}', env.IMAGE, steps.ver.outputs.version) || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
