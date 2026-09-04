@@ -27,7 +27,9 @@ jobs:
       - name: Resolve pinned opencode version
         if: github.ref == 'refs/heads/main'
         id: ver
-        run: echo "version=$(grep -m1 '^ARG OPENCODE_VERSION=' Dockerfile | cut -d= -f2 | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "image=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "version=$(grep -m1 '^ARG OPENCODE_VERSION=' Dockerfile | cut -d= -f2 | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
 
       - name: Create release tag for new pinned version
         if: steps.ver.outputs.version != ''
@@ -70,8 +72,8 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}
-            ${{ steps.ver.outputs.version && format('{0}:{1}', lower(env.IMAGE), steps.ver.outputs.version) || '' }}
-            ${{ steps.ver.outputs.version && format('{0}:v{1}', lower(env.IMAGE), steps.ver.outputs.version) || '' }}
+            ${{ steps.ver.outputs.version && format('{0}:{1}', steps.ver.outputs.image, steps.ver.outputs.version) || '' }}
+            ${{ steps.ver.outputs.version && format('{0}:v{1}', steps.ver.outputs.image, steps.ver.outputs.version) || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
