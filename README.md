@@ -64,13 +64,33 @@ All variables are documented in [.env.example](.env.example).
 
 ## Image
 
-Published to `ghcr.io/besi97/opencode-web` on every merge to `main`:
+Published to `ghcr.io/besi97/opencode-web` (public, no login needed). **Tags mirror the bundled OpenCode version:**
 
-- `latest` — tip of `main`
-- `sha-<commit>` — immutable per-commit tag
-- `v*` — version tags (push a tag to publish)
+| Tag | Meaning |
+|-----|---------|
+| `1.18.27` | Built with OpenCode 1.18.27 (published automatically when the pin lands on `main`) |
+| `v1.18.27` | Same, with `v` prefix |
+| `latest` | Tip of `main` |
+| `sha-<full-commit>` | Immutable per-commit build |
+| `1.18.27-1` | Toolchain rebuild of the same OpenCode version (push a `v1.18.27-1` git tag) |
 
 Multi-arch: `linux/amd64`, `linux/arm64` (arm64 is best-effort via emulation).
+
+## Versions & updates
+
+The OpenCode version is **pinned in the Dockerfile** (`ARG OPENCODE_VERSION`), so builds are reproducible and every image tag truthfully names what is inside:
+
+```bash
+docker run --rm ghcr.io/besi97/opencode-web:latest --version   # prints the pinned version
+cat /etc/opencode-web-versions                                  # inside the container
+# or: docker inspect → label dev.opencode-web.opencode-version
+```
+
+Keeping things current:
+
+- **OpenCode** — update PRs bump the pinned ARG; merging to `main` publishes the new `:<version>` tag automatically (the workflow creates the matching git release tag).
+- **Base image (`node:trixie-slim`) and CI actions** — Dependabot.
+- **Other brew tools** (`gh`, `kubectl`, `sops`, ...) — resolved by Homebrew at build time; `latest` tracks them, version tags do not promise anything about them.
 
 Build locally:
 
@@ -88,7 +108,9 @@ docker-compose.yaml             # reference deployment
 opencode.jsonc                  # default global config (mounted read-only)
 instructions/                   # global agent instructions (mounted read-only)
 agents/  skills/                # your customizations (mounted read-only)
-.github/workflows/publish.yml   # build + push to ghcr.io
+.github/dependabot.yml          # base image + CI action updates
+.github/workflows/build.yml     # PR smoke build (never pushes)
+.github/workflows/publish.yml   # build + push to ghcr.io, version-mirrored tags
 ```
 
 ## License

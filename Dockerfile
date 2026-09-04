@@ -1,5 +1,11 @@
 FROM node:trixie-slim
 
+# Pinned OpenCode release (image tags mirror this version; bumps come via update PRs).
+# The release tarball is the same artifact the Homebrew formula installs, but with an
+# explicit, diffable version.
+# renovate: datasource=github-releases depName=anomalyco/opencode
+ARG OPENCODE_VERSION=1.18.27
+
 RUN apt-get update && apt-get install -y \
     build-essential \
     procps \
@@ -11,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     gnupg \
     jq \
+    ripgrep \
     python3 \
     yq \
     age \
@@ -48,8 +55,7 @@ RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.co
 RUN echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/node/.bashrc
 
 RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
-    brew trust anomalyco/tap && \
-    brew install anomalyco/tap/opencode opentofu gh forgejo-cli kubectl sops
+    brew install opentofu gh forgejo-cli kubectl sops
 
 # Set up environment for runtime
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$PATH"
@@ -74,6 +80,28 @@ RUN mkdir -p /home/node/.local/share/opencode \
     chown -R node:node /home/node && \
     chmod +x /entrypoint.sh && \
     chmod +x /home/node/.config/forgejo-credential-helper.sh
+
+# Install pinned OpenCode binary from GitHub releases
+RUN case "$(dpkg --print-architecture)" in \
+      amd64) OC_ARCH=x64 ;; \
+      arm64) OC_ARCH=arm64 ;; \
+      *) echo "unsupported architecture: $(dpkg --print-architecture)" >&2; exit 1 ;; \
+    esac && \
+    curl -fsSL -o /tmp/opencode.tar.gz \
+      "https://github.com/anomalyco/opencode/releases/download/v${OPENCODE_VERSION}/opencode-linux-${OC_ARCH}.tar.gz" && \
+    mkdir -p /tmp/opencode && \
+    tar -xzf /tmp/opencode.tar.gz -C /tmp/opencode && \
+    install -m 0755 "$(find /tmp/opencode -type f -name opencode | head -1)" /usr/local/bin/opencode && \
+    rm -rf /tmp/opencode /tmp/opencode.tar.gz && \
+    printf 'opencode=%s\n' "${OPENCODE_VERSION}" > /etc/opencode-web-versions && \
+    opencode --version | grep -F "${OPENCODE_VERSION}"
+
+LABEL org.opencontainers.image.title="opencode-web" \
+      org.opencontainers.image.description="Containerized OpenCode web server with a full dev toolchain" \
+      org.opencontainers.image.source="https://github.com/Besi97/opencode-web" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${OPENCODE_VERSION}" \
+      dev.opencode-web.opencode-version="${OPENCODE_VERSION}"
 USER node
 
 ENTRYPOINT ["/entrypoint.sh"]

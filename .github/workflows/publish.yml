@@ -1,5 +1,10 @@
 name: Publish image
 
+# Image tags mirror the pinned OpenCode version (ARG OPENCODE_VERSION in the Dockerfile):
+#   push to main  -> :latest, :sha-<full>; auto-tags vX.Y.Z when the pin changed,
+#                    which triggers this workflow again for the tag -> :X.Y.Z
+#   tag vX.Y.Z(-r) -> :X.Y.Z, :vX.Y.Z (release tags, incl. manual rebuild revisions)
+
 on:
   push:
     branches: [main]
@@ -13,10 +18,29 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve pinned opencode version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: ver
+        run: echo "version=$(grep -m1 '^ARG OPENCODE_VERSION=' Dockerfile | cut -d= -f2 | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Create release tag for new pinned version
+        if: steps.ver.outputs.version != ''
+        run: |
+          VER='${{ steps.ver.outputs.version }}'
+          if git ls-remote --tags "origin" "refs/tags/v$VER" | grep -q .; then
+            echo "v$VER already exists, skipping"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "v$VER" -m "opencode $VER"
+            git push origin "v$VER"
+            echo "pushed v$VER"
+          fi
 
       - uses: docker/setup-qemu-action@v3
 
@@ -35,6 +59,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=tag
+            type=semver,pattern={{version}}
             type=sha,format=long
 
       - uses: docker/build-push-action@v6
