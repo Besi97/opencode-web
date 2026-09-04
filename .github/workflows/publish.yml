@@ -5,7 +5,8 @@ name: Publish image
 #   push to main     -> :latest, :sha-<full>, plus the release tag computed as:
 #                         v$VER missing        -> push v$VER,        publish :$VER
 #                         v$VER at HEAD        -> no new tag,         republish :$VER (re-run)
-#                         v$VER at other commit-> push v$VER-rev<N+1>, publish :$VER-rev<N+1>
+#                         vX.Y.Z-rev<N> at HEAD-> no new tag,         republish :$VER-rev<N> (re-run)
+#                         otherwise            -> push v$VER-rev<N+1>, publish :$VER-rev<N+1>
 #                       (tags pushed by this workflow do not re-trigger it, hence the
 #                        main build publishes the image tag itself)
 #   tag vX.Y.Z(-revN) -> :X.Y.Z(-revN), :vX.Y.Z(-revN) (manual release/rebuild tags)
@@ -45,8 +46,13 @@ jobs:
           elif [ "$TAGGED_SHA" = "$HEAD_SHA" ]; then
             NEW_TAG=""; IMAGE_TAG="$VER"
           else
-            N=$(git ls-remote origin "refs/tags/v$VER-rev*" | sed -nE "s|.*refs/tags/v$VER-rev([0-9]+)$|\1|p" | sort -n | tail -1)
-            NEW_TAG="v$VER-rev$(( ${N:-0} + 1 ))"; IMAGE_TAG="$VER-rev$(( ${N:-0} + 1 ))"
+            HEAD_REV=$(git ls-remote origin "refs/tags/v$VER*" | awk -F'\t' -v s="$HEAD_SHA" '$1==s && $2 ~ /\^\{\}$/' | head -1 | cut -f2 | sed "s|refs/tags/v$VER||; s|\^{}||")
+            if [ -n "$HEAD_REV" ]; then
+              NEW_TAG=""; IMAGE_TAG="$VER$HEAD_REV"
+            else
+              N=$(git ls-remote origin "refs/tags/v$VER-rev*" | sed -nE "s|.*refs/tags/v$VER-rev([0-9]+)$|\1|p" | sort -n | tail -1)
+              NEW_TAG="v$VER-rev$(( ${N:-0} + 1 ))"; IMAGE_TAG="$VER-rev$(( ${N:-0} + 1 ))"
+            fi
           fi
           if [ -n "$NEW_TAG" ]; then
             git config user.name "github-actions[bot]"
