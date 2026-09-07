@@ -1,6 +1,21 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
+  "extends": ["config:recommended"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Bump pinned OpenCode version (ARG in Dockerfile)",
+      "fileMatch": ["(^|/)Dockerfile$"],
+      "matchStrings": [
+        "#\\s+renovate:\\s+datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\n\\s*ARG\\s+OPENCODE_VERSION=(?<currentValue>\\S+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["dockerfile", "docker-compose", "github-actions"],
+      "enabled": false,
+      "description": "Base image and CI actions are covered by Dependabot; Renovate only owns the OpenCode pin. Also avoids bumping this repo's own image reference in docker-compose.yaml."
+    }
   ]
 }
