@@ -5,7 +5,9 @@
     {
       "customType": "regex",
       "description": "Bump pinned OpenCode version (ARG in Dockerfile)",
-      "fileMatch": ["(^|/)Dockerfile$"],
+      "managerFilePatterns": [
+        "/(^|/)Dockerfile$/"
+      ],
       "matchStrings": [
         "#\\s+renovate:\\s+datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\n\\s*ARG\\s+OPENCODE_VERSION=(?<currentValue>\\S+)"
       ]
