@@ -4,7 +4,7 @@ FROM node:trixie-slim
 # The release tarball is the same artifact the Homebrew formula installs, but with an
 # explicit, diffable version.
 # renovate: datasource=github-releases depName=anomalyco/opencode
-ARG OPENCODE_VERSION=1.19.0
+ARG OPENCODE_VERSION=1.19.2
 
 RUN apt-get update && apt-get install -y \
     build-essential \
