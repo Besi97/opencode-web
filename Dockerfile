@@ -4,7 +4,7 @@ FROM node:trixie-slim
 # The release tarball is the same artifact the Homebrew formula installs, but with an
 # explicit, diffable version.
 # renovate: datasource=github-releases depName=anomalyco/opencode
-ARG OPENCODE_VERSION=1.19.5
+ARG OPENCODE_VERSION=2.2.0
 
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -94,7 +94,12 @@ RUN case "$(dpkg --print-architecture)" in \
     install -m 0755 "$(find /tmp/opencode -type f -name opencode | head -1)" /usr/local/bin/opencode && \
     rm -rf /tmp/opencode /tmp/opencode.tar.gz && \
     printf 'opencode=%s\n' "${OPENCODE_VERSION}" > /etc/opencode-web-versions && \
-    opencode --version | grep -F "${OPENCODE_VERSION}"
+    # Verify from a throwaway HOME: ENV HOME points at /home/node even as root, and v2
+    # writes logs under $HOME on any command, leaving a root-owned log dir that breaks
+    # the runtime smoke test as the node user.
+    _vhome="$(mktemp -d)" && \
+    HOME="$_vhome" opencode --version | grep -F "${OPENCODE_VERSION}" && \
+    rm -rf "$_vhome"
 
 LABEL org.opencontainers.image.title="opencode-web" \
       org.opencontainers.image.description="Containerized OpenCode web server with a full dev toolchain" \
