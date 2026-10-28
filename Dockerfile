@@ -94,7 +94,12 @@ RUN case "$(dpkg --print-architecture)" in \
     install -m 0755 "$(find /tmp/opencode -type f -name opencode | head -1)" /usr/local/bin/opencode && \
     rm -rf /tmp/opencode /tmp/opencode.tar.gz && \
     printf 'opencode=%s\n' "${OPENCODE_VERSION}" > /etc/opencode-web-versions && \
-    opencode --version | grep -F "${OPENCODE_VERSION}"
+    # Verify from a throwaway HOME: ENV HOME points at /home/node even as root, and v2
+    # writes logs under $HOME on any command, leaving a root-owned log dir that breaks
+    # the runtime smoke test as the node user.
+    _vhome="$(mktemp -d)" && \
+    HOME="$_vhome" opencode --version | grep -F "${OPENCODE_VERSION}" && \
+    rm -rf "$_vhome"
 
 LABEL org.opencontainers.image.title="opencode-web" \
       org.opencontainers.image.description="Containerized OpenCode web server with a full dev toolchain" \
