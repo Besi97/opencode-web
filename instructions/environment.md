@@ -35,7 +35,7 @@ Secrets and tokens are provided via environment variables (`GITHUB_TOKEN`, and o
 
 The entrypoint configures `gh auth setup-git` when `GITHUB_TOKEN` is set, and a credential helper for a Forgejo instance when `FORGEJO_TOKEN`, `FORGEJO_URL`, and `FORGEJO_USER` are set. For private repositories, use `gh` or `fj` to handle authentication and push.
 
-When `GPG_SIGNING_KEY_PATH` points at a readable, passphrase-less private key, the entrypoint imports it and sets `user.signingkey` plus `commit.gpgsign=true` globally, so commits are signed automatically — never pass `-S` yourself, and never re-create the key inside the container.
+When `GPG_SIGNING_KEY_PATH` points at a readable private key, the entrypoint imports it and sets `user.signingkey` plus `commit.gpgsign=true` globally, so commits are signed automatically — never pass `-S` yourself, and never re-create the key inside the container. If the key is passphrase-protected, `GPG_SIGNING_KEY_PASSPHRASE` must also be set; the entrypoint then routes git through `~/.config/gpg-loopback.sh`, which pipes the passphrase to gpg on a private fd. Signing failures with `Inappropriate ioctl for device` mean that variable is missing or wrong — do not work around them by disabling signing.
 
 ## MCP servers
 

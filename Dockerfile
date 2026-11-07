@@ -67,6 +67,7 @@ WORKDIR /home/node
 # Copy and set up entrypoint script and credential helper
 COPY entrypoint.sh /entrypoint.sh
 COPY forgejo-credential-helper.sh /home/node/.config/forgejo-credential-helper.sh
+COPY gpg-loopback.sh /home/node/.config/gpg-loopback.sh
 
 # Pre-create application directories to ensure they have correct ownership
 # when Docker mounts volumes or when the app tries to create subdirectories.
@@ -79,7 +80,8 @@ RUN mkdir -p /home/node/.local/share/opencode \
              /home/node/projects && \
     chown -R node:node /home/node && \
     chmod +x /entrypoint.sh && \
-    chmod +x /home/node/.config/forgejo-credential-helper.sh
+    chmod +x /home/node/.config/forgejo-credential-helper.sh && \
+    chmod +x /home/node/.config/gpg-loopback.sh
 
 # Install pinned OpenCode binary from GitHub releases
 RUN case "$(dpkg --print-architecture)" in \

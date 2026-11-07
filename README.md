@@ -45,21 +45,22 @@ Set `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL` (and committer equivalents) so agent co
 
 ### Signed commits (optional)
 
-Point `GPG_SIGNING_KEY_PATH` at a **passphrase-less** private key mounted into the container. At startup the entrypoint imports it (`gpg --batch --import`) and sets `user.signingkey` plus `commit.gpgsign=true` globally, so every agent commit is signed. Unset, or unreadable, and the container just starts unsigned.
+Point `GPG_SIGNING_KEY_PATH` at a private key mounted into the container. At startup the entrypoint imports it (`gpg --batch --import`) and sets `user.signingkey` plus `commit.gpgsign=true` globally, so every agent commit is signed. Unset, or unreadable, and the container just starts unsigned.
 
 ```bash
-# On the host: export the key with no passphrase protection
-gpg --armor --export-secret-keys <key-id> > gpg_signing_key.asc
+# On the host: export the secret key. A subkey-only export (--export-secret-subkeys)
+# is fine: gpg resolves the signing subkey itself, so the stubbed primary never needs
+# its secret material in the container.
+gpg --armor --export-secret-subkeys <key-id> > gpg_signing_key.asc
 chown 1000:1000 gpg_signing_key.asc && chmod 600 gpg_signing_key.asc
 
 echo 'GPG_SIGNING_KEY_PATH=/run/secrets/gpg_signing_key' >> .env
 # and uncomment the ./gpg_signing_key.asc volume line in docker-compose.yaml
 ```
 
-Two things to know:
+**Passphrase-protected keys work too.** Set `GPG_SIGNING_KEY_PASSPHRASE` and the entrypoint points git at `gpg-loopback.sh`, which hands the passphrase to gpg on a pipe (`--passphrase-fd 3`) rather than prompting or putting it on argv, where every process in the container could read it. The key imports fine *without* the passphrase - it only fails later, at signing time, with `signing failed: Inappropriate ioctl for device`, so that error means the variable is missing or wrong. It remains visible in `docker inspect` and to anything the agent runs, which is the usual argument for a dedicated signing key rather than your personal one.
 
-- **No passphrase support.** gpg cannot prompt inside the container, so a protected key makes every commit fail with `signing failed: Inappropriate ioctl for device`. Export the key without protection (`%no-protection` in a batch key parameter file) rather than adding one.
-- **Match the identity.** Forges show a commit as *Verified* only when the key's UID email matches the commit author. `GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_EMAIL` are env-driven and override `git config`, so set them to the same address the key was made for.
+**Match the identity.** Forges show a commit as *Verified* only when the key's UID email matches the commit author. `GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_EMAIL` are env-driven and override `git config`, so set them to the same address the key was made for.
 
 `~/.gnupg` is not a volume, so the key is re-imported on each start (re-importing the same key is a no-op) and signing works in every repository the agent touches.
 
@@ -124,6 +125,7 @@ docker build -t opencode-web .
 Dockerfile                      # image definition
 entrypoint.sh                   # git auth + optional commit signing, then exec opencode
 forgejo-credential-helper.sh    # git credential helper (env-var driven)
+gpg-loopback.sh                 # git gpg.program wrapper for passphrase-protected keys
 docker-compose.yaml             # reference deployment
 opencode.jsonc                  # default global config (mounted read-only)
 instructions/                   # global agent instructions (mounted read-only)

@@ -16,9 +16,10 @@ services:
       - GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-}
       - GIT_COMMITTER_NAME=${GIT_COMMITTER_NAME:-}
       - GIT_COMMITTER_EMAIL=${GIT_COMMITTER_EMAIL:-}
-      # Optional GPG commit signing: in-container path of a mounted, passphrase-less
-      # private key. Enable together with the commented volume below (see README).
+      # Optional GPG commit signing: in-container path of a mounted private key, plus
+      # its passphrase when the key is protected (see README "Signed commits").
       - GPG_SIGNING_KEY_PATH=${GPG_SIGNING_KEY_PATH:-}
+      - GPG_SIGNING_KEY_PASSPHRASE=${GPG_SIGNING_KEY_PASSPHRASE:-}
       # Optional: enables the Google Stitch remote MCP server (see opencode.jsonc)
       - STITCH_API_KEY=${STITCH_API_KEY:-}
     ports:
