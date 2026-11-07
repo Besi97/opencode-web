@@ -22,6 +22,7 @@ Pre-installed in the container:
 - **GitHub CLI** (`gh`) — for GitHub interactions.
 - **Forgejo CLI** (`fj`) — for Forgejo interactions.
 - **kubectl**, **sops**, **age**, **jq**, **yq**
+- **Go** (`go`) — installed via Homebrew, on `PATH` by default.
 - **GnuPG** (`gpg`) — used for commit signing when `GPG_SIGNING_KEY_PATH` is configured
 - **Java** (OpenJDK 21) — available via `java`/`javac`.
 - **Standard build tools** — `gcc`, `g++`, `make`, etc.
