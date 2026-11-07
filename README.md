@@ -1,6 +1,6 @@
 # opencode-web
 
-A containerized [OpenCode](https://opencode.ai) web server: `node:trixie-slim` plus a curated toolchain (Homebrew, Docker CLI, Git, OpenTofu, `gh`, `fj`, `kubectl`, `sops`, `age`, Java, build tools), running `opencode web` as a non-root user.
+A containerized [OpenCode](https://opencode.ai) web server: `node:trixie-slim` plus a curated toolchain (Homebrew, Docker CLI, Git, OpenTofu, `gh`, `fj`, `kubectl`, `sops`, `age`, Go, Java, build tools), running `opencode web` as a non-root user.
 
 Built for self-hosters who want a persistent, browser-accessible OpenCode environment with the tooling an agent needs to do real infrastructure work.
 
