@@ -43,6 +43,26 @@ The entrypoint configures credentials automatically at startup:
 
 Set `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL` (and committer equivalents) so agent commits are attributed correctly.
 
+### Signed commits (optional)
+
+Point `GPG_SIGNING_KEY_PATH` at a **passphrase-less** private key mounted into the container. At startup the entrypoint imports it (`gpg --batch --import`) and sets `user.signingkey` plus `commit.gpgsign=true` globally, so every agent commit is signed. Unset, or unreadable, and the container just starts unsigned.
+
+```bash
+# On the host: export the key with no passphrase protection
+gpg --armor --export-secret-keys <key-id> > gpg_signing_key.asc
+chown 1000:1000 gpg_signing_key.asc && chmod 600 gpg_signing_key.asc
+
+echo 'GPG_SIGNING_KEY_PATH=/run/secrets/gpg_signing_key' >> .env
+# and uncomment the ./gpg_signing_key.asc volume line in docker-compose.yaml
+```
+
+Two things to know:
+
+- **No passphrase support.** gpg cannot prompt inside the container, so a protected key makes every commit fail with `signing failed: Inappropriate ioctl for device`. Export the key without protection (`%no-protection` in a batch key parameter file) rather than adding one.
+- **Match the identity.** Forges show a commit as *Verified* only when the key's UID email matches the commit author. `GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_EMAIL` are env-driven and override `git config`, so set them to the same address the key was made for.
+
+`~/.gnupg` is not a volume, so the key is re-imported on each start (re-importing the same key is a no-op) and signing works in every repository the agent touches.
+
 ## Docker-in-Docker
 
 The container ships the Docker CLI but no daemon. Two options:
@@ -102,7 +122,7 @@ docker build -t opencode-web .
 
 ```
 Dockerfile                      # image definition
-entrypoint.sh                   # git auth setup, then exec opencode
+entrypoint.sh                   # git auth + optional commit signing, then exec opencode
 forgejo-credential-helper.sh    # git credential helper (env-var driven)
 docker-compose.yaml             # reference deployment
 opencode.jsonc                  # default global config (mounted read-only)

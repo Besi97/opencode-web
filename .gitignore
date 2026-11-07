@@ -1,2 +1,4 @@
 .env
 data/
+# Never commit a mounted signing key (see README "Signed commits")
+gpg_signing_key.asc

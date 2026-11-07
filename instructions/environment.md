@@ -22,6 +22,7 @@ Pre-installed in the container:
 - **GitHub CLI** (`gh`) — for GitHub interactions.
 - **Forgejo CLI** (`fj`) — for Forgejo interactions.
 - **kubectl**, **sops**, **age**, **jq**, **yq**
+- **GnuPG** (`gpg`) — used for commit signing when `GPG_SIGNING_KEY_PATH` is configured
 - **Java** (OpenJDK 21) — available via `java`/`javac`.
 - **Standard build tools** — `gcc`, `g++`, `make`, etc.
 - **curl, file, procps, sudo** — common utilities.
@@ -33,6 +34,8 @@ Secrets and tokens are provided via environment variables (`GITHUB_TOKEN`, and o
 ## Git and pushing
 
 The entrypoint configures `gh auth setup-git` when `GITHUB_TOKEN` is set, and a credential helper for a Forgejo instance when `FORGEJO_TOKEN`, `FORGEJO_URL`, and `FORGEJO_USER` are set. For private repositories, use `gh` or `fj` to handle authentication and push.
+
+When `GPG_SIGNING_KEY_PATH` points at a readable, passphrase-less private key, the entrypoint imports it and sets `user.signingkey` plus `commit.gpgsign=true` globally, so commits are signed automatically — never pass `-S` yourself, and never re-create the key inside the container.
 
 ## MCP servers
 

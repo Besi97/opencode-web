@@ -16,6 +16,9 @@ services:
       - GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-}
       - GIT_COMMITTER_NAME=${GIT_COMMITTER_NAME:-}
       - GIT_COMMITTER_EMAIL=${GIT_COMMITTER_EMAIL:-}
+      # Optional GPG commit signing: in-container path of a mounted, passphrase-less
+      # private key. Enable together with the commented volume below (see README).
+      - GPG_SIGNING_KEY_PATH=${GPG_SIGNING_KEY_PATH:-}
       # Optional: enables the Google Stitch remote MCP server (see opencode.jsonc)
       - STITCH_API_KEY=${STITCH_API_KEY:-}
     ports:
@@ -34,6 +37,9 @@ services:
       - ./instructions:/home/node/.config/opencode/instructions:ro
       - ./agents:/home/node/.config/opencode/agents:ro
       - ./skills:/home/node/.config/opencode/skills:ro
+      # Optional: read-only GPG signing key (passphrase-less export, owned by UID
+      # 1000). Uncomment and set GPG_SIGNING_KEY_PATH=/run/secrets/gpg_signing_key.
+      # - ./gpg_signing_key.asc:/run/secrets/gpg_signing_key:ro
     networks:
       - default
       - dind
