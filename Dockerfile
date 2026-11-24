@@ -95,6 +95,7 @@ RUN case "$(dpkg --print-architecture)" in \
     tar -xzf /tmp/opencode.tar.gz -C /tmp/opencode && \
     install -m 0755 "$(find /tmp/opencode -type f -name opencode | head -1)" /usr/local/bin/opencode && \
     rm -rf /tmp/opencode /tmp/opencode.tar.gz && \
+    install -d -o node -g node -m 0755 /tmp/opencode && \
     printf 'opencode=%s\n' "${OPENCODE_VERSION}" > /etc/opencode-web-versions && \
     # Verify from a throwaway HOME: ENV HOME points at /home/node even as root, and v2
     # writes logs under $HOME on any command, leaving a root-owned log dir that breaks
